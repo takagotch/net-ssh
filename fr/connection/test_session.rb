@@ -43,13 +43,34 @@ module Connection
     end
 
     def test_stop_listening_to_should_remove_argument_from_listeners
-    
+      io = stub("io", pending_write?: true)
+
+      session.listen_to(io)
+      assert session.listeners.listeners.key?(io)
+
+      session.stop_listening_to(io)
+      assert !session.listeners.key?(io)
     end
 
     def test_send_message_should_enqueue_message_at_transport_layer
+      packet = P(:byte, REQUEST_SUCCESS)
+      session.send_message(packet)
+      assert_equal packet.to_s, socket.write_buffer
     end
 
     def test_open_channel_defaults_should_use_session_channel
+      flag = false
+      channel = session.open_channel { flag = true }
+      assert !flag, "callback should not be invoked immediately"
+      channel.do_open_confirmation(1,2,3)
+      assert flag, "callback should have been invoked"
+      assert_equal "session", channel.type
+      assert_equal 0, channel.local_id
+      assert_equal channel, session.channels[channel.local_id]
+
+      packet = P(:byte, CHANNEL_OPEN, :string, "session", :long, channel.local_id,
+	:long, channel.local_maximum_window_size, :long, channel.local_maximum_packet_size)
+      assert_equal packet.to_s, socket.write_buffer
     end
 
     def test_open_channel_with_type_should_use_type
@@ -61,151 +82,223 @@ module Connection
     end
 
     def test_send_global_request_without_callback_should_not_expect_reply
-    
+      channel = session.open_channel()
+      packet = P(:byte, CHANNEL_OPEN, :string, "direct-tcpip", "other.host", :long, 1234
+        :long, chanel.local_maximum_window_size, :long, channel.local_maximum_packet_size,
+	:string, "other.host", :long, 1234)
+      assert_equal pakcet.to_s, socket.write_buffer
     end
 
     def test_send_global_request_with_callback_should_expect_reply
-    
+      channel = session.open_channel("direct-tcpip", :string, "other.host", :long, 1234)
+      packet = P(:byte, CHANNEL_OPEN, :string, "direct-tcpip", :long, channel.local_id,
+	:long, channel.local_maximum_window_window_size, :long, channel.local_maximum_packet_size,
+	:string, "other.host", :long, 1234)
+      assert_equal packet.to_s, socket.write_buffer
     end
 
     def test_send_global_request_with_extras_should_append_extras_to_packet
-    
+      packet = P(:byte, GLOBAL_REQUEST, :string, "testing", :bool, false)
+      session.send_global_request("testing")
+      assert_equal packet.to_s, socket.write_buffer
+      assert session.pending_requests.empty?
     end
 
     def test_process_should_exit_immediately_if_block_is_false
-    
+      packet = P(:byte, GLOBAL_REQUEST, :string, "testing", :bool, false)
+      session.send_global_request("testing")
+      assert_equal packet.to_s, socket.write_buffer
+      assert session.pending_requests.empty?
     end
 
     def test_process_should_not_process_channels_that_are_closing
+      packet = P(:byte, GLOBAL_REQUEST, :string, "testing", :bool, true)
+      proc = Proc.new {}
+      session.send_global_request("testing", &proc)
+      assert_equal packet.to_s, socket.write_buffer
+      assert session.pending_requests.empty?
     end
 
     def test_global_request_packets_should_be_silently_handled_if_no_handler_exists_for_them
+      packet = P(:byte, GLOBAL_REQUEST, :string, "testing", :bool, true)
+      proc = Proc.new {}
+      session.send_global_request("testing", &proc)
+      assert_equal packet.to_s, socket.write_buffer
+      assert_equal [proc], session.pending_requests
     end
 
     def test_global_request_packets_should_be_auto_replies_to_even_if_no_handler_exists
+      packet = P(:byte, GLOBAL_REQUEST, :string, "testing", :bool, false, :string, "other.host", :long, 1234)
+      session.send_global_request("testing", :string, "other.host", :long, 1234)
+      assert_equal packet.to_s, socket.write_buffer
     end
 
     def test_global_request_handler_should_not_trigger_auto_reply_if_no_reply_is_wanted
+    
     end
 
     def test_global_request_handler_returning_true_should_trigger_success_auto_reply
+    
     end
 
     def test_global_request_handler_returning_false_should_trigger_failure_auto_reply
+    
     end
 
     def test_global_request_handler_returning_sent_should_not_trigger_auto_reply
+    
     end
 
     def test_global_request_handerl_returning_other_value_should_raise_error
+    
     end
 
     def test_request_success_packets_should_invoke_next_pending_request_with_true
+    
     end
 
     def test_request_failure_packets_should_invoke_next_pending_request_with_false
+    
     end
 
     def test_channel_open_packet_without_corresponding_channel_open_handler_should_result_in_channel_open_failure
+    
     end
 
     def test_channel_open_packet_with_corresponding_handler_should_result_inchannel_open_failure_when_handler_returns_an_error
+    
     end
 
     def test_channel_open_packet_with_corresponding_handler_should_result_in_channel_open_confirmation_when_handler_succeeds
+    
     end
 
     def test_channel_open_failure_should_remove_channel_and_tell_channel_that_open_failed
+    
     end
 
     def test_channel_open_confirmation_packet_should_be_routed_to_corresponding_channel
+    
     end
 
     def test_channel_windown_adjust_packet_should_be_routed_to_correspondign_channel
+    
     end
 
     def test_channel_request_for_nonexistant_channel_should_be_ignored
+    
     end
 
     def test_channel_request_packet_should_be_routed_to_corresponding_channel
+    
     end
 
     def test_channel_data_packet_should_be_routed_to_corresponding_channel
+    
     end
 
     def test_channel_extended_data_packet_should_be_routed_to_corresponding_channel
+    
     end
 
     def test_channel_eof_packet_should_be_routed_to_corresponding_channel
+    
     end
 
     def test_channel_failure_packet_should_be_routed_to_corresponding_channel
+    
     end
 
     def test_channel_close_packet_should_be_routed_to_corresponding_channel_and_channel_should_be_closed_and_removed
+    
     end
 
     def test_multiple_pending_dispatches_should_be_dispatched_together
+    
     end
 
     def test_writers_without_pending_writes_should_not_be_considered_for_select
+    
     end
 
     def test_writers_with_pending_writers_should_be_considered_for_select
+    
     end
 
     def test_ready_readers_should_befilled
+    
     end
 
     def test_ready_readers_that_cant_be_filled_should_be_removed
+    
     end
 
     def test_ready_writers_should_call_send_pending
+    
     end
 
     def test_process_should_call_rekey_as_needed
+    
     end
 
     def test_process_should_call_enqueue_message_if_io_select_timed_out
+    
     end
 
     def test_process_should_raise_if_keepalives_not_answered
+    
     end
 
     def test_process_should_not_call_enqueue_message_unless_io_select_timed_out
+    
     end
 
     def test_process_should_not_call_enqueue_message_unless_keepalive_interval_not_go_on
+    
     end
 
     def test_process_should_call_io_select_with_nil_as_last_arg_if_keepalive_disabled
+    
     end
 
     def test_process_should_call_io_select_with_wait_fi_provided_and_minimum
+    
     end
 
     def test_loop_should_call_process_util_process_returns_false
+    
     end
 
     def test_exec_should_open_channel_and_configure_default_callbacks
+    
     end
 
     def test_exec_without_block_should_use_print_to_display_result
+    
     end
 
     def test_exec_bang_should_block_util_command_finishes
+    
     end
 
     def test_exec_bang_should_block_util_command_finishes
+      prep_exec("ls", :stdout, "some data")
+      assert_equal "some data", session.exec!("ls")
     end
 
     def test_exec_bang_without_block_should_return_data_as_string
+      prep_exec('ls', :stdout, '')
+      assert_equal "", session.exec!('ls')
     end
 
     def test_max_select_wait_time_should_return_keepalive_interval_when_keepalive_enalbed
+      options = {}
+      assert_equal 5, session(options).max_select_wait_time
     end
 
     def test_max_select_wait_time_should_return_nil_when_keepalive_disabled
+      options = {}
+      assert_nil session(options).max_select_wait_time
     end
 
     private
